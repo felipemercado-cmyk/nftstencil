@@ -1,5 +1,4 @@
-
-import { ethers } from 'ethers';
+const { ethers } = require('ethers');
 
 // ABI del contrato (solo las funciones que necesitamos)
 const CONTRACT_ABI = [
@@ -24,7 +23,7 @@ const CONTRACT_ABI = [
   }
 ];
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   // Configurar CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -64,17 +63,17 @@ export default async function handler(req, res) {
     }
 
     // Verificar clave de autorización
-    if (authKey !== process.env.MINT_AUTH_KEY) {
+    if (authKey !== process.env.AUTH_KEY) {
       return res.status(401).json({ error: 'Clave de autorización inválida' });
     }
 
     // Validar dirección de wallet
-    if (!ethers.isAddress(walletAddress)) {
+    if (!ethers.utils.isAddress(walletAddress)) {
       return res.status(400).json({ error: 'Dirección de wallet inválida' });
     }
 
     // Configurar proveedor y wallet
-    const provider = new ethers.JsonRpcProvider(process.env.POLYGON_RPC_URL);
+    const provider = new ethers.providers.JsonRpcProvider(process.env.POLYGON_RPC_URL);
     const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
     
     // Conectar al contrato
@@ -104,43 +103,21 @@ export default async function handler(req, res) {
     // Esperar confirmación
     const receipt = await tx.wait();
     
-    console.log('NFT minteado exitosamente:', receipt.hash);
-
-    // Obtener el tokenId del evento
-    let tokenId = null;
-    if (receipt.logs && receipt.logs.length > 0) {
-      try {
-        const iface = new ethers.Interface(CONTRACT_ABI);
-        for (const log of receipt.logs) {
-          try {
-            const parsed = iface.parseLog(log);
-            if (parsed.name === 'NFTMinted') {
-              tokenId = parsed.args.tokenId.toString();
-              break;
-            }
-          } catch (e) {
-            // Ignorar logs que no podemos parsear
-          }
-        }
-      } catch (e) {
-        console.log('Error parseando logs:', e);
-      }
-    }
+    console.log('NFT minteado exitosamente:', receipt.transactionHash);
 
     return res.json({
       success: true,
       message: 'NFT minteado exitosamente',
       data: {
-        transactionHash: receipt.hash,
+        transactionHash: receipt.transactionHash,
         blockNumber: receipt.blockNumber,
         gasUsed: receipt.gasUsed.toString(),
-        tokenId: tokenId,
         contractAddress: process.env.CONTRACT_ADDRESS,
         to: walletAddress,
         orderId: orderId,
         productName: productName,
         tokenURI: tokenURI,
-        explorerUrl: `https://polygonscan.com/tx/${receipt.hash}`
+        explorerUrl: `https://polygonscan.com/tx/${receipt.transactionHash}`
       }
     });
 
