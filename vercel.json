@@ -1,10 +1,4 @@
-
 {
-  "functions": {
-    "api/mint.js": {
-      "runtime": "nodejs18.x"
-    }
-  },
   "headers": [
     {
       "source": "/api/(.*)",
