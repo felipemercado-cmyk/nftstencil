@@ -1,6 +1,6 @@
 const { ethers } = require('ethers');
 
-// ABI del contrato (solo las funciones que necesitamos)
+// ABI del contrato
 const CONTRACT_ABI = [
   {
     "inputs": [
@@ -39,13 +39,23 @@ module.exports = async function handler(req, res) {
   }
 
   try {
+    // Parse manual del body si es necesario
+    let body = req.body;
+    if (typeof body === 'string') {
+      try {
+        body = JSON.parse(body);
+      } catch (e) {
+        return res.status(400).json({ error: 'JSON inválido' });
+      }
+    }
+
     const { 
       walletAddress, 
       orderId, 
       productName, 
       tokenURI,
       authKey 
-    } = req.body;
+    } = body;
 
     // Verificar parámetros requeridos
     if (!walletAddress || !orderId || !productName || !tokenURI || !authKey) {
@@ -106,9 +116,20 @@ module.exports = async function handler(req, res) {
   } catch (error) {
     console.error('Error minteando NFT:', error);
     
-    return res.status(500).json({ 
-      error: 'Error interno del servidor',
+    let errorMessage = 'Error interno del servidor';
+    let statusCode = 500;
+    
+    if (error.code === 'INSUFFICIENT_FUNDS') {
+      errorMessage = 'Fondos insuficientes en la wallet';
+      statusCode = 402;
+    } else if (error.reason) {
+      errorMessage = error.reason;
+      statusCode = 400;
+    }
+
+    return res.status(statusCode).json({ 
+      error: errorMessage,
       details: error.message
     });
   }
-}
+};
